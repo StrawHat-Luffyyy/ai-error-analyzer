@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 
 const errorSchema = new mongoose.Schema({
   input : {
-    type : string ,
+    type : String ,
     required : true
   } , 
   analysis : {
