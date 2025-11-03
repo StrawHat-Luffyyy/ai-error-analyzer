@@ -21,6 +21,8 @@ const errorSchema = new mongoose.Schema({
     enum : ['success' , 'failed'],
     default : 'success'
   }
+} , {
+  timestamps : true
 })
 
 export default mongoose.model("ErrorLog" , errorSchema)

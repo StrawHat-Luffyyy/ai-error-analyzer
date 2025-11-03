@@ -14,6 +14,7 @@ export const analyzeError = async (req, res) => {
       and return a valid JSON object with exactly these keys: 
       "summary", "rootCause", and "suggestedFix".
       The output must be strictly valid JSON — no code blocks, no markdown, no explanations.
+      If you must include double quotes in string values, escape them properly with a backslash.
       
       Error:
       ${error}
@@ -59,16 +60,16 @@ export const analyzeError = async (req, res) => {
     }
 
     const responseTime = Date.now() - start;
-
     const saved = await ErrorLog.create({
       input: error,
       analysis: parsedResponse,
       responseTime,
+      ai: "gemini-2.5-flash",
     });
 
     res.status(200).json({ success: true, data: saved });
   } catch (err) {
-    console.error("Gemini Error:", err);
-    res.status(500).json({ success: false, message: "AI analysis failed." });
+    console.error(`[AI ERROR] ${err.message}`);
+    console.error(err.stack);
   }
 };
