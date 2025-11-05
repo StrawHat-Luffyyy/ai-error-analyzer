@@ -1,3 +1,4 @@
+import { redis } from "../config/redis.js";
 import { geminiModel } from "../config/gemini.js";
 import ErrorLog from "../models/error.model.js";
 
@@ -9,67 +10,67 @@ export const analyzeError = async (req, res) => {
   const start = Date.now();
 
   try {
+    let cached = null;
+    try {
+      cached = await redis.get(error);
+    } catch (cacheErr) {
+      console.warn("Cache GET error (non-fatal):", cacheErr);
+    }
+    if (cached) {
+      console.log("Served from cache");
+      return res.status(200).json({
+        success: true,
+        data: JSON.parse(cached),
+        cached: true,
+      });
+    }
+
+    // Gemini AI call
     const prompt = `
       You are an expert software engineer. Analyze the following error 
-      and return a valid JSON object with exactly these keys: 
-      "summary", "rootCause", and "suggestedFix".
-      The output must be strictly valid JSON — no code blocks, no markdown, no explanations.
-      If you must include double quotes in string values, escape them properly with a backslash.
-      
+      and return a valid JSON object with keys: "summary", "rootCause", "suggestedFix".
+      Output strictly valid JSON.
       Error:
       ${error}
     `;
 
-    //Pass the prompt string directly
     const result = await geminiModel.generateContent(prompt);
-
-    const response = result.response;
-    let text = response.text().trim();
-
-    //Clean up unwanted markdown
+    let text = result.response.text().trim();
     text = text
       .replace(/```json/i, "")
       .replace(/```/g, "")
       .trim();
 
-    //Parse JSON safely
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(text);
-    } catch (parseErr) {
-      console.warn("Raw response not valid JSON. Attempting cleanup...");
-
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          parsedResponse = JSON.parse(jsonMatch[0]);
-        } catch {
-          parsedResponse = {
-            summary: text,
-            rootCause: "Parsing failed",
-            suggestedFix: "Recheck output format.",
-          };
-        }
-      } else {
-        parsedResponse = {
-          summary: text,
-          rootCause: "AI output not in JSON",
-          suggestedFix: "Manually interpret message.",
-        };
-      }
+    } catch {
+      parsedResponse = {
+        summary: text,
+        rootCause: "Parsing failed",
+        suggestedFix: "Recheck output format.",
+      };
     }
 
     const responseTime = Date.now() - start;
+
     const saved = await ErrorLog.create({
       input: error,
       analysis: parsedResponse,
       responseTime,
-      ai: "gemini-2.5-flash",
+      aiModel: "Gemini-1.5-flash",
     });
 
-    res.status(200).json({ success: true, data: saved });
+    // Cache result for 24 hours
+    try {
+      await redis.set(error, JSON.stringify(saved), { ex: 86400 });
+    } catch (cacheErr) {
+      console.warn("Cache SET error (non-fatal):", cacheErr);
+    }
+
+    res.status(200).json({ success: true, data: saved, cached: false });
   } catch (err) {
-    console.error(`[AI ERROR] ${err.message}`);
-    console.error(err.stack);
+    console.error("Gemini Error:", err);
+    res.status(500).json({ success: false, message: "AI analysis failed." });
   }
 };

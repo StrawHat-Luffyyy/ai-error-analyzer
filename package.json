@@ -13,10 +13,12 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@sentry/node": "^10.22.0",
+    "@upstash/redis": "^1.35.6",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
-    "mongoose": "^8.19.2"
+    "mongoose": "^8.19.2",
+    "redis": "^5.9.0"
   },
   "type": "module",
   "devDependencies": {
