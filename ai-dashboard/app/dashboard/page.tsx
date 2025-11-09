@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from "recharts";
 import { useTheme } from "next-themes";
 import { chartColors } from "@/lib/chartTheme";
 
@@ -19,6 +19,7 @@ type Metrics = {
   totalErrors: number;
   avgResponseTime: string;
   topKeywords: string[];
+  recentActivity: string[];
 };
 
 export default function DashboardPage() {
@@ -74,6 +75,46 @@ export default function DashboardPage() {
               </BarChart>
             </ResponsiveContainer>
           </div>
+        </CardContent>
+      </Card>
+      {/* Recent Activity */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Activity</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Error</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {metrics?.recentActivity?.length ? (
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                metrics.recentActivity.map((log: any, index: number) => (
+                  <TableRow key={index}>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {new Date(log.createdAt).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {log.input.slice(0, 60)}...
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell
+                    colSpan={2}
+                    className="text-center text-muted-foreground"
+                  >
+                    No recent activity found.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
     </div>
